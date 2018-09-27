@@ -27,7 +27,7 @@
 
 extern info_t *info;
 
-void gdt_setup_descriptor(seg_desc_t * seg_p, unsigned long base, unsigned long limit, uint8_t type){//}, unsigned char access, unsignes char gran){
+void gdt_setup_descriptor(seg_desc_t * seg_p, unsigned long base, unsigned long limit){//}, , uint8_t type unsigned char access, unsignes char gran){
     debug("Avant chgmt:  0x%lx       Adresse:  0x%x   \n", *seg_p, seg_p);
     uint8_t * oct = (uint8_t*)seg_p;
     
