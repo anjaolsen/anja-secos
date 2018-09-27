@@ -47,6 +47,8 @@ Questions:
 de début ? Indice: essayer de comprendre linker.lds, regardez
 également le code de "entry.s"
 
+    objdump -D kernel.elf | less
+
 2 - A l'aide de la structure "multiboot_info", vous devez afficher la
 cartographie mémoire de la VM. Pour cela, utilisez les champs
 "mmap_addr" et "mmap_length". Aidez-vous d'internet pour trouver des

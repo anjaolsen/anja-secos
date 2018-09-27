@@ -14,6 +14,8 @@ par
 Qemu ne supporte pas "complètement" la segmentation. Il est nécessaire
 d'utiliser KVM à la place.
 
+Commentaire: il faut faire sudo make qemu
+
 Questions:
 ----------
 
