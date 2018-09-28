@@ -127,8 +127,8 @@ void tp()
     debug("Limite :  0x%x, Adr de base : 0x%lx\n", gdt_addr_new.limit, gdt_addr_new.addr);
 
     gdt_tab[0] = (seg_desc_t) *gdt_addr.desc ;
-    gdt_setup_descriptor(&gdt_tab[1], 0x00000, 0xfffff, 0x9A);
-    gdt_setup_descriptor(&gdt_tab[2], 0x00000, 0xfffff, 0x92);
+    gdt_setup_descriptor(&gdt_tab[1], 0x00000, 0xfffff, CSD_TYPE);
+    gdt_setup_descriptor(&gdt_tab[2], 0x00000, 0xfffff, DSD_TYPE);
 
     display_gdt(gdt_addr_new);
 
@@ -140,15 +140,18 @@ void tp()
     set_fs(0x10);
     set_gs(0x10);
     //https://stackoverflow.com/questions/23978486/far-jump-in-gdt-in-bootloader
-    //ss?
+
 
     char  src[64];
     char *dst = 0;
 
     memset(src, 0xff, 64);
     _memcpy8(dst, src, 32);
+    
 
-    //Ce qui se passe : le main se met à boucler 
+    //Ce qui se passe : le main se met à boucler ...?
 
+    _memcpy8(dst, src, 64);
+    // la même chose se passe
 }
 
