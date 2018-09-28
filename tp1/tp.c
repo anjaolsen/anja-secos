@@ -2,6 +2,7 @@
 #include <debug.h>
 #include <info.h>
 #include <segmem.h>
+#include <string.h>
 
 
 // Tips: https://wiki.osdev.org/Global_Descriptor_Table
@@ -56,7 +57,7 @@ void display_gdt(gdt_reg_t gdt){
     unsigned short gdtr_size = gdt.limit + 1;
     
     int nombre_de_segments = gdtr_size / sizeof(seg_desc_t);
-    debug("nb:  %d   \n", nombre_de_segments);
+    debug("Numero de segments:  %d   \n", nombre_de_segments);
 
     seg_desc_t * seg_ptr = (seg_desc_t *)gdt.addr;
     for (int i = 0; i < nombre_de_segments; i++){
@@ -115,16 +116,10 @@ void tp()
     debug("==============Configuration GDT===============\n");
     debug("==============================================\n");
 
-    // remettre le pointeur au debut
-    //seg_desc_t seg_ptr = (seg_desc_t *)gdt_addr.addr;
-    
-    
-    //gdt_setup_descriptor(seg_ptr+2, 0x300000, 1000, DSD_TYPE);
-
     gdt_reg_t gdt_addr_new;
     seg_desc_t gdt_tab[3];
     if ((int )&gdt_tab[0] % 8 != 0){
-        debug("Not aligned! addr = 0x%x \n", gdt_tab);
+        debug("Not aligned! T0D0. current addr = 0x%x \n", gdt_tab);
     }
     gdt_addr_new.desc = &gdt_tab[0];
     gdt_addr_new.limit = 3 * sizeof(seg_desc_t) - 1;
@@ -138,9 +133,22 @@ void tp()
     display_gdt(gdt_addr_new);
 
     set_gdtr(gdt_addr_new); 
+    set_cs(0x08);
+    set_ds(0x10);
+    set_ss(0x10);
+    set_es(0x10);
+    set_fs(0x10);
+    set_gs(0x10);
+    //https://stackoverflow.com/questions/23978486/far-jump-in-gdt-in-bootloader
+    //ss?
 
+    char  src[64];
+    char *dst = 0;
 
+    memset(src, 0xff, 64);
+    _memcpy8(dst, src, 32);
 
+    //Ce qui se passe : le main se met à boucler 
 
 }
 
