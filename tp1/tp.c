@@ -28,10 +28,26 @@
 
 extern info_t *info;
 
+//attention : limite absolue, pas relative
 void gdt_setup_descriptor(seg_desc_t * seg_p, unsigned long base, unsigned long limit, uint8_t type){//}, ,  unsigned char access, unsignes char gran){
     // debug("Avant chgmt:  0x%lx       Adresse:  0x%x   \n", *seg_p, seg_p);
     uint8_t * oct = (uint8_t*)seg_p;
     
+    if ((limit > 65536) && (limit & 0xFFF) != 0xFFF) {
+        debug("Impossible lim 0x%lx\n", limit);
+    }
+    if (limit > 65536) {
+       // Adjust granularity if required
+        debug("Gran. Ancienne limite  0x%lx\n", limit);
+        limit = limit >> 12;
+        oct[6] = 0xC0;
+        debug("Gran. Nouvelle limite  0x%lx\n", limit);
+
+    } else {
+       oct[6] = 0x40;
+    }
+    seg_p->g = 1&0x1;
+
     oct[2] = base & 0xFF;
     oct[3] =  (base >> 8) & 0xFF;
     oct[4] =  (base >> 16) & 0xFF;
@@ -39,7 +55,7 @@ void gdt_setup_descriptor(seg_desc_t * seg_p, unsigned long base, unsigned long 
  
     oct[0] = limit & 0xFF;
     oct[1] = (limit >> 8)  & 0xFF;
-    oct[6] = (limit >> 16)  & 0xFF;
+    oct[6] |= (limit >> 16)  & 0xFF;
 
     oct[5] = type & 0xFF;
     seg_p->l = 1&0x1;
@@ -72,6 +88,8 @@ void display_gdt(gdt_reg_t gdt){
         debug("Type seg-desc:  0x%x   \n", seg_type);
 
         debug("Long mode (32bits)  0x%x   \n", seg_ptr->l);
+
+        debug("Granularity  0x%x   \n", seg_ptr->g);
 
         seg_ptr++;
         
@@ -117,18 +135,19 @@ void tp()
     debug("==============================================\n");
 
     gdt_reg_t gdt_addr_new;
-    seg_desc_t gdt_tab[3];
+    seg_desc_t gdt_tab[4];
     if ((int )&gdt_tab[0] % 8 != 0){
         debug("Not aligned! T0D0. current addr = 0x%x \n", gdt_tab);
     }
     gdt_addr_new.desc = &gdt_tab[0];
-    gdt_addr_new.limit = 3 * sizeof(seg_desc_t) - 1;
+    gdt_addr_new.limit = 4 * sizeof(seg_desc_t) - 1;
 
     debug("Limite :  0x%x, Adr de base : 0x%lx\n", gdt_addr_new.limit, gdt_addr_new.addr);
 
     gdt_tab[0] = (seg_desc_t) *gdt_addr.desc ;
-    gdt_setup_descriptor(&gdt_tab[1], 0x00000, 0xfffff, CSD_TYPE);
-    gdt_setup_descriptor(&gdt_tab[2], 0x00000, 0xfffff, DSD_TYPE);
+    gdt_setup_descriptor(&gdt_tab[1], 0x00000, 0xfff0, CSD_TYPE);
+    gdt_setup_descriptor(&gdt_tab[2], 0x00000, 0xfff0, DSD_TYPE);
+    gdt_setup_descriptor(&gdt_tab[3], 0x600000, 0x600020, DSD_TYPE);
 
     display_gdt(gdt_addr_new);
 
@@ -136,7 +155,7 @@ void tp()
     set_cs(0x08);
     set_ds(0x10);
     set_ss(0x10);
-    set_es(0x10);
+    set_es(0x18);
     set_fs(0x10);
     set_gs(0x10);
     //https://stackoverflow.com/questions/23978486/far-jump-in-gdt-in-bootloader
@@ -148,10 +167,7 @@ void tp()
     memset(src, 0xff, 64);
     _memcpy8(dst, src, 32);
     
-
-    //Ce qui se passe : le main se met à boucler ...?
-
     _memcpy8(dst, src, 64);
-    // la même chose se passe
+    // la même chose se passe...
 }
 
