@@ -147,15 +147,15 @@ void tp()
     gdt_tab[0] = (seg_desc_t) *gdt_addr.desc ;
     gdt_setup_descriptor(&gdt_tab[1], 0x00000, 0xfff0, CSD_TYPE);
     gdt_setup_descriptor(&gdt_tab[2], 0x00000, 0xfff0, DSD_TYPE);
-    gdt_setup_descriptor(&gdt_tab[3], 0x600000, 0x600020, DSD_TYPE);
-
+    gdt_setup_descriptor(&gdt_tab[3], 0x600000, 0x20, DSD_TYPE);
+    gdt_tab[3].g = 0&0x1;
     display_gdt(gdt_addr_new);
 
     set_gdtr(gdt_addr_new); 
     set_cs(0x08);
     set_ds(0x10);
     set_ss(0x10);
-    set_es(0x18);
+    
     set_fs(0x10);
     set_gs(0x10);
     //https://stackoverflow.com/questions/23978486/far-jump-in-gdt-in-bootloader
@@ -165,9 +165,40 @@ void tp()
     char *dst = 0;
 
     memset(src, 0xff, 64);
+    set_es(0x18);
     _memcpy8(dst, src, 32);
+    // ca marche. Il faut 'setter' es juste avant car memset change le contenu de es
+
     
     _memcpy8(dst, src, 64);
-    // la même chose se passe...
+        // IDT event
+        //. int    #13
+        //. error  0x0
+        //. cs:eip 0x8:0x3044fb
+        //. ss:esp 0x22:0x301f6c
+        //. eflags 0x10006
+
+        //- GPR
+        //eax     : 0x0
+        //ecx     : 0x1f
+        //edx     : 0x301f70
+        //ebx     : 0x2be40
+        //esp     : 0x301f4c
+        //ebp     : 0x301fe8
+        //esi     : 0x301f91
+        //edi     : 0x21
+
+        //Exception: General protection
+        //#GP details: ext:0 idt:0 ti:0 index:0
+        //cr0 = 0x11
+        //cr4 = 0x0
+
+        //-= Stack Trace =-
+        //0x30305a
+        //0x303020
+        //0x8c85
+        //0x72bf0000
+        //fatal exception !
+
 }
 
