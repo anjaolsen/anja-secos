@@ -1,25 +1,31 @@
 /* GPLv2 (c) Airbus */
 #include <debug.h>
 #include <info.h>
+#include <intr.h>
 #include <segmem.h>
 
 extern info_t *info;
 
 // http://www.osdever.net/bkerndev/Docs/idt.htm
 //https://manybutfinite.com/ 
+// http://www.jamesmolloy.co.uk/tutorial_html/4.-The%20GDT%20and%20IDT.html
 
 
 void bp_handler() 
 {
+    debug("\n\n\n\n");
     debug("BP handler\n");
+    debug("\n\n\n\n");
 
 }
 
 void bp_trigger() 
 {
+    debug("\n\n\n\n");
     debug("BP trigger\n");
-    asm("INT3"); //$
+    asm("INT3"); 
     //int3();
+    debug("\n\n\n\n");
     debug("BP trigger\n");
 }
 
@@ -66,15 +72,33 @@ void tp()
     // 0x72bf0000
     // fatal exception !
 
-    //3.1
+    
 
     idt_reg_t * idt_;
     get_idtr(idt_);
-
+    int_desc_t * old_IDT; 
     debug("Adresse de chargement IDT : 0x%x\n", idt_);
+
+    old_IDT = idt_->desc;
+    for (int i = 0; i < 10; i++){
+        debug("Offset : 0x%x\n", (old_IDT[i].offset_1) + ((old_IDT[i].offset_2)<<16));
+    }
+    debug("\n");
+
+    // old_IDT[3].offset_1 = (offset_t)&bp_handler & 0xFFFF;
+    // old_IDT[3].offset_2 = ((offset_t)&bp_handler>>16) & 0xFFFF;
+    // ou :
+    int_desc(&old_IDT[3], gdt_krn_seg_sel(1), (offset_t)bp_handler);
+
+    // set_idtr(idt_);
+    for (int i = 0; i < 10; i++){
+        debug("Offset : 0x%x\n", (old_IDT[i].offset_1) + ((old_IDT[i].offset_2)<<16));
+    }
+
+
     bp_trigger();
 
-    //3.2
+
 
 
 }
