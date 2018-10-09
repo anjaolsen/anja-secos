@@ -21,12 +21,29 @@ void bp_handler()
 
 void bp_trigger() 
 {
+
+    
+
+// When an interrupt occurs, the CPU does the following:
+
+//     Push the current address (contents of the Instruction Pointer) onto the stack; also, push the processor flags (but not all the other processor registers)
+//     Jump to the address of the ISR (Interrupt Service Routine), which is specified in the Interrupt Descriptor Table.
+
+// The ISR should do the following:
+
+//     Push any registers which it intends to alter (or, push all registers)
+//     Handle the interrupt
+//     Reenable interrupts
+//     Pop any registers which it pushed
+//     Use the IRET instructions, which pops the CPU flags and Instruction Pointer value from the stack (and thus returns to whatever was executing when the interrupt occured).
+
+
     debug("\n\n\n\n");
     debug("BP trigger\n");
     asm("INT3"); 
     //int3();
     debug("\n\n\n\n");
-    debug("BP trigger\n");
+    debug("BP trigger2\n");
 }
 
 
