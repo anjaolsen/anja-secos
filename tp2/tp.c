@@ -4,6 +4,41 @@
 #include <intr.h>
 #include <segmem.h>
 
+/*
+IDT- les 32 premieres sont les exception du systeme
+A partir du 32 on trouve les IRQ. Certains generent des codes d'err et certains ne le font pas.
+@F      0
+
+
+Pousse dans la pile:
+flags
+CS
+EIP     <- esp
+
+si c une erreur: ca rajoute un code d'erreur a la fin.
+
+L'idee est de dire que les gestionneur d'err sont les petites fonctions dans idt.s
+push -1: c un faux code d'erreur
+puis on rajoute le numéro de l'IT.
+
+common: sauvegrade tous les reg.++
+esp va pointer en pile a l'endroit ou on a tout sauvegardé. (stack layout)
+struct qui contient tout ca.
+
+Qd on crée une fct en c le compilateur empile encore des trucs. 
+C'est pour ca que notre code ne marche pas.
+En plus elles font un RET a la fin. Ce RET n'a aucun sens dans notre cas.
+on doit realigner la pile avec un leave puis faire un IRET
+
+
+/// sjekke i deassemblert versjon hvilken adresse jeg hopper til.
+
+
+///q7 message de debug apres BP trigger: 
+
+*/
+
+
 extern info_t *info;
 
 // http://www.osdever.net/bkerndev/Docs/idt.htm
@@ -17,6 +52,7 @@ void bp_handler()
     debug("BP handler\n");
     debug("\n\n\n\n");
 
+    asm("IRET");
 }
 
 void bp_trigger() 
