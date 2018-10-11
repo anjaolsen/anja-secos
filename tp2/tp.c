@@ -3,7 +3,7 @@
 #include <info.h>
 #include <intr.h>
 #include <segmem.h>
-
+extern void resume_from_intr();
 /*
 IDT- les 32 premieres sont les exception du systeme
 A partir du 32 on trouve les IRQ. Certains generent des codes d'err et certains ne le font pas.
@@ -46,24 +46,20 @@ extern info_t *info;
 // http://www.jamesmolloy.co.uk/tutorial_html/4.-The%20GDT%20and%20IDT.html
 
 
-void bp_handler() 
-{
-    debug("\n\n\n\n");
-    debug("BP handler\n");
-    debug("\n\n\n\n");
-
-    asm("IRET");
-}
-
-void bp_trigger() 
-{
-
-    
 
 // When an interrupt occurs, the CPU does the following:
 
 //     Push the current address (contents of the Instruction Pointer) onto the stack; also, push the processor flags (but not all the other processor registers)
 //     Jump to the address of the ISR (Interrupt Service Routine), which is specified in the Interrupt Descriptor Table.
+
+// Stack layout when we enter the handler: 
+// ss      <-  if change of priviledge
+// esp     <-  if change of priviledge
+// flags
+// CS
+// EIP             <- esp (we want sp to point here in out #BP case)
+// errorcode 
+
 
 // The ISR should do the following:
 
@@ -73,85 +69,69 @@ void bp_trigger()
 //     Pop any registers which it pushed
 //     Use the IRET instructions, which pops the CPU flags and Instruction Pointer value from the stack (and thus returns to whatever was executing when the interrupt occured).
 
+void bp_handler() 
+{
+    asm volatile ("pusha");
+    debug("\n\n\n\n");
+    debug("BP handler\n");
+    asm volatile ("popa");
+    asm volatile ("add $4, %esp"); //depiler error code
+    asm volatile ("iret"); // iret depile eip, cs et eflags
+}
 
+void bp_trigger() 
+{
     debug("\n\n\n\n");
     debug("BP trigger\n");
     asm("INT3"); 
     //int3();
     debug("\n\n\n\n");
-    debug("BP trigger2\n");
+    debug("BP trigger retour\n");
 }
 
+void displayIdt(int_desc_t *IDT){
+     for (int i = 0; i < 5; i++){
+    //   uint64_t  offset_1:16;    /* bits 00-15 of the isr offset */
+    //   uint64_t  selector:16;    /* isr segment selector */
+    //   uint64_t  ist:3;          /* stack table: only 64 bits */
+    //   uint64_t  zero_1:5;       /* must be 0 */
+    //   uint64_t  type:4;         /* interrupt/trap gate */
+    //   uint64_t  zero_2:1;       /* must be zero */
+    //   uint64_t  dpl:2;          /* privilege level */
+    //   uint64_t  p:1;            /* present flag */
+    //   uint64_t  offset_2:16;    /* bits 16-31 of the isr offset */
+        debug("Offset : 0x%x\n", (IDT[i].offset_1 + ((IDT[i].offset_2)<<16)));
+        debug("Selector : 0x%x\n", IDT[i].selector & 0xFFFF);
+        debug("Ist : 0x%x\n", IDT[i].ist & 0x7);
+        debug("zero_1 : 0x%x\n", IDT[i].zero_1 & 0x1F);
+        debug("zero_2 : 0x%x\n", IDT[i].zero_2 & 0x1);
+        debug("type : 0x%x\n", IDT[i].type & 0xF);
+        debug("dpl : 0x%x\n", IDT[i].dpl & 0x3);
+        debug("p : 0x%x\n", IDT[i].p & 0x1);
+        debug("\n");
+    }
+}
 
 void tp()
 {
-    //q1)
+    idt_reg_t * idt_r;
+    get_idtr(idt_r);
+    int_desc_t * _IDT; 
+    debug("Adresse de chargement IDT : 0x%x\n", idt_r->addr);
 
-    // int a = 1;
-    // int b = 0;
-
-
-    // while (1) {
-    //     a = a/b;
-    // }
-
-    //resultat : 
-
-    // IDT event
-    //  . int    #0
-    //  . error  0xffffffff
-    //  . cs:eip 0x8:0x303f82
-    //  . ss:esp 0x303052:0x302008
-    //  . eflags 0x6
-
-    // - GPR
-    // eax     : 0x1
-    // ecx     : 0x304920
-    // edx     : 0x0
-    // ebx     : 0x2be40
-    // esp     : 0x301fc4
-    // ebp     : 0x301fe8
-    // esi     : 0x2bfc2
-    // edi     : 0x2bfc3
-
-    // Exception: Divide by zero
-    // cr0 = 0x11
-    // cr4 = 0x0
-
-    // -= Stack Trace =-
-    // 0x30305a
-    // 0x303020
-    // 0x8c85
-    // 0x72bf0000
-    // fatal exception !
-
-    
-
-    idt_reg_t * idt_;
-    get_idtr(idt_);
-    int_desc_t * old_IDT; 
-    debug("Adresse de chargement IDT : 0x%x\n", idt_);
-
-    old_IDT = idt_->desc;
-    for (int i = 0; i < 10; i++){
-        debug("Offset : 0x%x\n", (old_IDT[i].offset_1) + ((old_IDT[i].offset_2)<<16));
-    }
+    _IDT = idt_r->desc;
+    displayIdt(_IDT);
+   
+    debug("\n");
+    debug("\n");
+    debug("\n");
     debug("\n");
 
-    // old_IDT[3].offset_1 = (offset_t)&bp_handler & 0xFFFF;
-    // old_IDT[3].offset_2 = ((offset_t)&bp_handler>>16) & 0xFFFF;
-    // ou :
-    int_desc(&old_IDT[3], gdt_krn_seg_sel(1), (offset_t)bp_handler);
+    int_desc(&_IDT[3], gdt_krn_seg_sel(1), (offset_t)bp_handler);
 
     // set_idtr(idt_);
-    for (int i = 0; i < 10; i++){
-        debug("Offset : 0x%x\n", (old_IDT[i].offset_1) + ((old_IDT[i].offset_2)<<16));
-    }
-
+    displayIdt(_IDT);
 
     bp_trigger();
-
-
-
 
 }
