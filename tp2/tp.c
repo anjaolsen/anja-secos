@@ -57,33 +57,49 @@ extern info_t *info;
 // esp     <-  if change of priviledge
 // flags
 // CS
-// EIP             <- esp (we want sp to point here in out #BP case)
+// EIP             <- esp (we want sp to point here in our #BP case)
 // errorcode 
 
 
 // The ISR should do the following:
 
-//     Push any registers which it intends to alter (or, push all registers)
-//     Handle the interrupt
-//     Reenable interrupts
-//     Pop any registers which it pushed
-//     Use the IRET instructions, which pops the CPU flags and Instruction Pointer value from the stack (and thus returns to whatever was executing when the interrupt occured).
+// https://wiki.osdev.org/Interrupt_Service_Routines
+
+//     -Push any registers which it intends to alter (or, 
+//          push all registers)
+//     -Handle the interrupt
+//     -Reenable interrupts (not here...)
+//     -Pop any registers which it pushed
+//     -Use the leave instruction to align the stack
+//     -Use the IRET instructions, which pops the CPU flags 
+//      and Instruction Pointer value from the stack 
+//      (and thus returns to whatever was executing when 
+//      the interrupt occured).
 
 void bp_handler() 
 {
-    //asm volatile ("pusha");
+    asm volatile ("pusha");
     debug("\n\n\n\n");
     debug("BP handler\n");
-    //asm volatile ("popa");
-    //asm volatile ("add $4, %esp"); //depiler error code
-    //asm volatile ("iret"); // iret depile eip, cs et eflags
+
+    uint32_t eip;
+    __asm__ __volatile__("movl $., %0" : "=r"(eip));
+    debug("Valeur eip dans handler: %lx\n", eip);
+    //The . assembler directive gets replaced with the 
+    //address of the current instruction by the assembler.
+    //eip contient la valeur 0x303f90 qui est une 
+    //instruction dans bp_handler (celle d apres celle ci )
+
+    ///3.5: aligner la pile et avoir le bon esp. 
+    asm volatile ("popa; leave ; iret");
 }
 
 void bp_trigger() 
 {
     debug("\n\n\n\n");
     debug("BP trigger\n");
-    asm("INT3"); 
+    
+    asm("int3"); 
     //int3();
     debug("\n\n\n\n");
     debug("BP trigger retour\n");
@@ -132,9 +148,10 @@ void tp()
     bp_dsc->offset_1 = (uint16_t)((uint32_t)bp_handler);
     bp_dsc->offset_2 = (uint16_t)(((uint32_t)bp_handler)>>16);
 
-    // set_idtr(idt_);
     displayIdt(_IDT);
 
     bp_trigger();
+    debug("Affichage pour tester si le pg rend la main a tp()\n");
+
 
 }
