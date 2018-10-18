@@ -75,15 +75,50 @@ void init_gdt()
 
    set_cs(c0_sel);
 
-   set_ss(d0_sel);
+   set_ss(d0_sel); //chargement de d3_sel ici: general protection fault.
+
+   //chargements des registres suivants avec le descritpeur de ring 3 : rien ne change
    set_ds(d0_sel);
    set_es(d0_sel);
    set_fs(d0_sel);
    set_gs(d0_sel);
 }
 
+void userland()
+{
+   asm volatile ("mov %eax, %cr0");
+}
+
 void tp()
 {
    show_gdt();
    init_gdt();
+
+   set_ds(d3_sel);
+   set_es(d3_sel);
+   set_fs(d3_sel);
+   set_gs(d3_sel);
+
+
+
+   // 3.3
+//    fptr32_t fptr = {.segment = c3_sel, .offset = (uint32_t)userland}; 
+//    farjump(fptr);
+
+
+//    3.3 - Essayez d'effectuer un "far jump" vers la fonction
+// "userland()". Pour cela il faut charger dans "CS" le sélecteur de code
+// ring 3 et dans EIP l'adresse de la fonction "userland()". Vous pouvez
+// utiliser le type "fptr32_t" et la fonction "farjump()" de notre noyau
+
+//    set_cs(c3_sel);
+
+   fptr32_t fptr;
+   fptr.offset = (uint32_t) userland;
+   fptr.segment = c3_sel;
+
+//    fptr32_t fptr = {.segment = c3_sel, .offset = (uint32_t)userland}; 
+   farjump(fptr);
+//    debug("lol 0x%lx 0x%lx \n", fptr.offset, fptr.segment);
+//    farjump(fptr);
 }
