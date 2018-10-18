@@ -71,12 +71,12 @@ extern info_t *info;
 
 void bp_handler() 
 {
-    asm volatile ("pusha");
+    //asm volatile ("pusha");
     debug("\n\n\n\n");
     debug("BP handler\n");
-    asm volatile ("popa");
-    asm volatile ("add $4, %esp"); //depiler error code
-    asm volatile ("iret"); // iret depile eip, cs et eflags
+    //asm volatile ("popa");
+    //asm volatile ("add $4, %esp"); //depiler error code
+    //asm volatile ("iret"); // iret depile eip, cs et eflags
 }
 
 void bp_trigger() 
@@ -114,12 +114,12 @@ void displayIdt(int_desc_t *IDT){
 
 void tp()
 {
-    idt_reg_t * idt_r;
+    idt_reg_t idt_r; //pas un pointeur. 
     get_idtr(idt_r);
     int_desc_t * _IDT; 
-    debug("Adresse de chargement IDT : 0x%x\n", idt_r->addr);
+    debug("Adresse de chargement IDT : 0x%x\n", idt_r.addr);
 
-    _IDT = idt_r->desc;
+    _IDT = idt_r.desc;
     displayIdt(_IDT);
    
     debug("\n");
@@ -127,7 +127,10 @@ void tp()
     debug("\n");
     debug("\n");
 
-    int_desc(&_IDT[3], gdt_krn_seg_sel(1), (offset_t)bp_handler);
+    int_desc_t *bp_dsc = &idt_r.desc[3];
+
+    bp_dsc->offset_1 = (uint16_t)((uint32_t)bp_handler);
+    bp_dsc->offset_2 = (uint16_t)(((uint32_t)bp_handler)>>16);
 
     // set_idtr(idt_);
     displayIdt(_IDT);
