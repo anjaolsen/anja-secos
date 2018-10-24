@@ -111,14 +111,66 @@ void tp()
 // ring 3 et dans EIP l'adresse de la fonction "userland()". Vous pouvez
 // utiliser le type "fptr32_t" et la fonction "farjump()" de notre noyau
 
-//    set_cs(c3_sel);
-
-   fptr32_t fptr;
+   /* fptr32_t fptr;
    fptr.offset = (uint32_t) userland;
    fptr.segment = c3_sel;
 
-//    fptr32_t fptr = {.segment = c3_sel, .offset = (uint32_t)userland}; 
-   farjump(fptr);
+   farjump(fptr); */
+
+   //general protection fault.
+
+   //3.4 
+
+   asm volatile (
+      "push %0    \n" // ss
+      "push %%ebp \n" // esp
+      "pushf      \n" // eflags
+      "push %1    \n" // cs
+      "push %2    \n" // eip
+      "iret"
+      ::
+       "i"(d3_sel),   //ss
+       "i"(c3_sel),   //cs
+       "r"(&userland) //eip
+       );
+
+   /* déclenche TSS invalid car le mov cr0 génère un exception #GP avec
+    * changement de niveau de privilège, donc le CPU regarde le TSS pour
+    * charger la pile ring0 (TSS.esp0), et comme nous n'avons pas
+    * configuré de TSS dans notre GDT ... ca plante.
+    */
+
+      //    qemu: fatal: invalid tss type
+      // EAX=00304317 EBX=0002be40 ECX=00304d40 EDX=00000003
+      // ESI=0002bfc2 EDI=0002bfc3 EBP=00301fe4 ESP=00301fe4
+      // EIP=0030431a EFL=00000082 [--S----] CPL=3 II=0 A20=1 SMM=0 HLT=0
+      // ES =0023 00000000 ffffffff 00cff300 DPL=3 DS   [-WA]
+      // CS =001b 00000000 ffffffff 00cffa00 DPL=3 CS32 [-R-]
+      // SS =0023 00000000 ffffffff 00cff300 DPL=3 DS   [-WA]
+      // DS =0023 00000000 ffffffff 00cff300 DPL=3 DS   [-WA]
+      // FS =0023 00000000 ffffffff 00cff300 DPL=3 DS   [-WA]
+      // GS =0023 00000000 ffffffff 00cff300 DPL=3 DS   [-WA]
+      // LDT=0000 00000000 0000ffff 00008200 DPL=0 LDT
+      // TR =0000 00000000 0000ffff 00008b00 DPL=0 TSS32-busy
+      // GDT=     00305940 0000002f
+      // IDT=     00305140 000007ff
+      // CR0=00000011 CR2=00000000 CR3=00000000 CR4=00000000
+      // DR0=00000000 DR1=00000000 DR2=00000000 DR3=00000000 
+      // DR6=ffff0ff0 DR7=00000400
+      // CCS=00000080 CCD=fffffff2 CCO=EFLAGS  
+      // EFER=0000000000000000
+      // FCW=037f FSW=0000 [ST=0] FTW=00 MXCSR=00001f80
+      // FPR0=0000000000000000 0000 FPR1=0000000000000000 0000
+      // FPR2=0000000000000000 0000 FPR3=0000000000000000 0000
+      // FPR4=0000000000000000 0000 FPR5=0000000000000000 0000
+      // FPR6=0000000000000000 0000 FPR7=0000000000000000 0000
+      // XMM00=00000000000000000000000000000000 XMM01=00000000000000000000000000000000
+      // XMM02=00000000000000000000000000000000 XMM03=00000000000000000000000000000000
+      // XMM04=00000000000000000000000000000000 XMM05=00000000000000000000000000000000
+      // XMM06=00000000000000000000000000000000 XMM07=00000000000000000000000000000000
+      // ../utils/rules.mk:58: recipe for target 'qemu' failed
+
+
+
 //    debug("lol 0x%lx 0x%lx \n", fptr.offset, fptr.segment);
-//    farjump(fptr);
 }
