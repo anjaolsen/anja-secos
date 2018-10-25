@@ -1,8 +1,5 @@
 /* GPLv2 (c) Airbus */
 
-// commentaire : je me permets de repartir de la correction du tp1
-// Ca petmet de mieux comprendre tous les élements de la correction
-
 #include <debug.h>
 #include <segmem.h>
 #include <string.h>
@@ -14,14 +11,17 @@ extern info_t *info;
 #define d0_idx  2
 #define c3_idx  3
 #define d3_idx  4
+#define ts_idx  5
 
 #define c0_sel  gdt_krn_seg_sel(c0_idx)
 #define d0_sel  gdt_krn_seg_sel(d0_idx)
 #define c3_sel  gdt_usr_seg_sel(c3_idx)
 #define d3_sel  gdt_usr_seg_sel(d3_idx)
+#define ts_sel  gdt_krn_seg_sel(ts_idx)
 
 
 seg_desc_t GDT[6];
+tss_t      TSS;
 
 #define gdt_flat_dsc(_dSc_,_pVl_,_tYp_)                                 \
    ({                                                                   \
@@ -35,6 +35,19 @@ seg_desc_t GDT[6];
       (_dSc_)->s       = 1;                                             \
       (_dSc_)->p       = 1;                                             \
    })
+#define tss_dsc(_dSc_,_tSs_)                                            \
+   ({                                                                   \
+      raw32_t addr    = {.raw = _tSs_};                                 \
+      (_dSc_)->raw    = sizeof(tss_t);                                  \
+      (_dSc_)->base_1 = addr.wlow;                                      \
+      (_dSc_)->base_2 = addr._whigh.blow;                               \
+      (_dSc_)->base_3 = addr._whigh.bhigh;                              \
+      (_dSc_)->type   = SEG_DESC_SYS_TSS_AVL_32;                        \
+      (_dSc_)->p      = 1;                                              \
+   })
+
+
+
 
 #define c0_dsc(_d) gdt_flat_dsc(_d,0,SEG_DESC_CODE_XR)
 #define d0_dsc(_d) gdt_flat_dsc(_d,0,SEG_DESC_DATA_RW)
@@ -121,7 +134,7 @@ void tp()
 
    //3.4 
 
-   asm volatile (
+   /* asm volatile (
       "push %0    \n" // ss
       "push %%ebp \n" // esp
       "pushf      \n" // eflags
@@ -132,7 +145,7 @@ void tp()
        "i"(d3_sel),   //ss
        "i"(c3_sel),   //cs
        "r"(&userland) //eip
-       );
+       ); */
 
    /* déclenche TSS invalid car le mov cr0 génère un exception #GP avec
     * changement de niveau de privilège, donc le CPU regarde le TSS pour
@@ -170,6 +183,23 @@ void tp()
       // XMM06=00000000000000000000000000000000 XMM07=00000000000000000000000000000000
       // ../utils/rules.mk:58: recipe for target 'qemu' failed
 
+      TSS.s0.esp = get_ebp(); //stack pointer of ring0
+      TSS.s0.ss  = d0_sel; //ring 0 data selector
+      tss_dsc(&GDT[ts_idx], (offset_t)&TSS);
+      set_tr(ts_sel);
+
+      asm volatile (
+            "push %0    \n" // ss
+            "push %%ebp \n" // esp
+            "pushf      \n" // eflags
+            "push %1    \n" // cs
+            "push %2    \n" // eip
+            "iret"
+            ::
+            "i"(d3_sel),
+            "i"(c3_sel),
+            "r"(&userland)
+            );
 
 
 //    debug("lol 0x%lx 0x%lx \n", fptr.offset, fptr.segment);
